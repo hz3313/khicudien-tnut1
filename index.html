@@ -801,7 +801,7 @@
 
             <!-- Bottom Actions inside Palette Card -->
             <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700 text-[11px]">
-              <button id="btn-clear-current-filter-ans" type="button" onclick="redoCurrentFilterQuestions()" title="Xóa đáp án đã chọn của các câu trong bộ lọc hiện tại để làm lại" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 transition-colors">
+              <button id="btn-clear-current-filter-ans" type="button" onclick="redoCurrentFilterQuestions()" title="Xóa đáp án đã chọn và xóa các câu làm sai trong danh sách đang mở để làm lại tất cả từ đầu" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 transition-colors">
                 <svg class="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                 <span>Làm lại bộ này</span>
               </button>
@@ -1131,6 +1131,7 @@
       answered: {},             // qid -> original option index (0..3) in Practice mode
       wrongIds: {},             // qid -> mistake count (active wrong queue)
       wrongTabAnswered: {},     // qid -> original option index (0..3) in current Wrong-tab session
+      wrongQueue: [],
       wrongHistoryEverCount: 0, // total questions ever added to wrongIds
       wrongResolvedCount: 0,    // count of questions resolved & removed inside Wrong tab
       bookmarks: {},            // qid -> true
@@ -2061,6 +2062,26 @@
       }
     }
 
+    function initWrongQueue() {
+      const wrongQids = Object.keys(state.wrongIds || {}).map(function(k) {
+        return parseInt(k, 10);
+      }).filter(function(id) {
+        const q = QUESTION_BY_ID[id];
+        return q && isChapterSelected(q.chap);
+      });
+
+      const shuffledQids = shuffleArray(wrongQids);
+      state.wrongQueue = shuffledQids.map(function(qid, idx) {
+        const q = QUESTION_BY_ID[qid];
+        return {
+          ...q,
+          instanceId: "w_" + qid + "_" + idx + "_" + Date.now(),
+          perm: generateOptionPermForQuestion(q),
+          chosen: undefined
+        };
+      });
+    }
+
     function switchMode(newMode) {
       closeSidebar();
       cancelAutoNext();
@@ -2107,8 +2128,7 @@
         renderPracticeView();
       } else if (newMode === "wrong") {
         vPractice.classList.remove("hidden");
-        state.wrongTabAnswered = {};
-        buildWrongTabShuffle();
+        initWrongQueue();
         state.currentIndex = 0;
         saveState();
         recomputeFilteredList();
@@ -2166,6 +2186,17 @@
     }
 
     function recomputeFilteredList() {
+      if (state.mode === "wrong") {
+        if (!Array.isArray(state.wrongQueue) || state.wrongQueue.length === 0) {
+          initWrongQueue();
+        }
+        filteredList = state.wrongQueue || [];
+        if (state.currentIndex >= filteredList.length) {
+          state.currentIndex = Math.max(0, filteredList.length - 1);
+        }
+        return;
+      }
+
       const baseMatches = QUESTIONS.filter(function(q) {
         if (state.mode === "wrong") {
           if (!state.wrongIds[q.id]) return false;
@@ -2410,7 +2441,7 @@
 
       for (let i = 0; i < filteredList.length; i++) {
         const q = filteredList[i];
-        const chosen = state.mode === "wrong" ? state.wrongTabAnswered[q.id] : state.answered[q.id];
+        const chosen = state.mode === "wrong" ? q.chosen : state.answered[q.id];
         const isCurrent = (i === state.currentIndex);
         const isStar = !!state.bookmarks[q.id];
 
@@ -2421,7 +2452,9 @@
           } else {
             colorCls = "bg-rose-500 text-white font-bold";
           }
-        } else if (state.mode === "wrong" || state.wrongIds[q.id]) {
+        } else if (state.mode === "wrong") {
+          colorCls = "bg-slate-100 dark:bg-slate-700/70 text-slate-700 dark:text-slate-300";
+        } else if (state.wrongIds[q.id]) {
           colorCls = "bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300";
         }
 
@@ -2591,8 +2624,8 @@
         state.practiceQuestionId = q.id;
         saveState();
       }
-      const chosenOrig = state.mode === "wrong" ? state.wrongTabAnswered[q.id] : state.answered[q.id];
-      const perm = getActiveOptionPerm(q);
+      const chosenOrig = state.mode === "wrong" ? q.chosen : state.answered[q.id];
+      const perm = state.mode === "wrong" ? (q.perm || getActiveOptionPerm(q)) : getActiveOptionPerm(q);
       const isShuf = isQuestionCurrentlyShuffled(q);
       const lvlObj = LEVEL_INFO[q.lvl] || LEVEL_INFO[2];
 
@@ -2670,7 +2703,7 @@
         } else {
           expBox.className = "mt-5 rounded-xl border border-rose-300 dark:border-rose-800 bg-rose-50/70 dark:bg-rose-950/40 p-4";
           const wrongNotice = (state.mode === "wrong")
-            ? " (Vẫn chưa chính xác — câu này đã được tự động đảo vào sau các câu khác để bạn làm lại)"
+            ? ""
             : " (Đã ghi nhận vào tab Câu sai)";
           document.getElementById("exp-status-title").innerHTML = '<span class="text-rose-700 dark:text-rose-300">✗ Chưa chính xác!' + wrongNotice + ' — Giải thích chi tiết:</span>';
         }
@@ -2686,53 +2719,108 @@
       if (filteredList.length === 0) return;
       cancelAutoNext();
       const q = filteredList[state.currentIndex];
+
+      if (state.mode === "wrong") {
+        const perm = q.perm || getActiveOptionPerm(q);
+        const chosenOrigIdx = perm[visualPos];
+        const isCorrect = (chosenOrigIdx === q.ans);
+
+        // TH1: Câu này đã được chọn đáp án sai trước đó và đang hiển thị đáp án đúng/sai
+        // Người dùng thao tác lại vào câu đúng
+        if (q.chosen !== undefined) {
+          if (isCorrect) {
+            // Khi chọn vào câu đúng: chuyển câu tiếp và câu hiện tại làm sai được xóa đi (tương tự bấm Câu tiếp theo)
+            state.wrongQueue.splice(state.currentIndex, 1);
+            recomputeFilteredList();
+            if (state.currentIndex >= filteredList.length) {
+              state.currentIndex = Math.max(0, filteredList.length - 1);
+            }
+            renderPracticeView();
+            updateStatsUI();
+            saveState();
+          }
+          return;
+        }
+
+        // TH2: Lần đầu tiên chọn đáp án cho câu này
+        q.chosen = chosenOrigIdx;
+        state.answered[q.id] = chosenOrigIdx;
+
+        if (isCorrect) {
+          // Khi chọn ĐÚNG ngay từ đầu: Xóa vĩnh viễn câu khỏi tab câu sai và chuyển câu tiếp
+          const qid = q.id;
+          delete state.wrongIds[qid];
+          state.wrongResolvedCount = (state.wrongResolvedCount || 0) + 1;
+          saveState();
+          renderPracticeView();
+
+          // Chuyển câu tiếp sau 400ms
+          setTimeout(function() {
+            state.wrongQueue = (state.wrongQueue || []).filter(function(item) {
+              return item.id !== qid;
+            });
+            recomputeFilteredList();
+            if (state.currentIndex >= filteredList.length) {
+              state.currentIndex = Math.max(0, filteredList.length - 1);
+            }
+            renderPracticeView();
+            updateStatsUI();
+          }, 400);
+        } else {
+          // Khi chọn SAI: DỪNG LẠI tại câu này để người dùng quan sát và nhớ
+          // Tạo thêm 1 câu giống câu vừa chọn sai vào NỬA CUỐI danh sách với đáp án trắng và đảo đáp án
+          state.wrongIds[q.id] = (state.wrongIds[q.id] || 0) + 1;
+
+          const duplicateItem = {
+            ...q,
+            instanceId: "w_" + q.id + "_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+            perm: generateOptionPermForQuestion(q), // đảo thứ tự đáp án mới
+            chosen: undefined // đáp án trắng hoàn toàn chưa được chọn
+          };
+
+          if (!Array.isArray(state.wrongQueue)) {
+            state.wrongQueue = [q];
+          }
+
+          const total = state.wrongQueue.length;
+          const cur = state.currentIndex;
+          const halfStart = Math.floor(total / 2);
+          // Đưa ra nửa cuối của tổng các câu
+          let insertIdx = Math.max(cur + 2, Math.floor((halfStart + total) / 2));
+          if (insertIdx > total) insertIdx = total;
+          if (insertIdx <= cur) insertIdx = total;
+          state.wrongQueue.splice(insertIdx, 0, duplicateItem);
+
+          saveState();
+          renderPracticeView();
+          updateStatsUI();
+        }
+        return;
+      }
+
+      // CHẾ ĐỘ ÔN TẬP BÌNH THƯỜNG
       const perm = getActiveOptionPerm(q);
       const chosenOrigIdx = perm[visualPos];
       const isCorrect = (chosenOrigIdx === q.ans);
 
-      if (state.mode === "wrong") {
-        state.wrongTabAnswered[q.id] = chosenOrigIdx;
-        state.answered[q.id] = chosenOrigIdx;
-
-        if (isCorrect) {
-          state.wrongNeedsRequeue = null;
-          if (state.autoClearWrong && state.wrongIds[q.id]) {
-            delete state.wrongIds[q.id];
-            state.wrongResolvedCount = (state.wrongResolvedCount || 0) + 1;
-          }
-        } else {
-          state.wrongIds[q.id] = (state.wrongIds[q.id] || 0) + 1;
-          // Ghi nhận câu này cần được đảo vào sau các câu khác để làm lại
-          state.wrongNeedsRequeue = q.id;
+      state.answered[q.id] = chosenOrigIdx;
+      if (!isCorrect) {
+        if (!state.wrongIds[q.id]) {
+          state.wrongHistoryEverCount = (state.wrongHistoryEverCount || 0) + 1;
         }
-      } else {
-        state.answered[q.id] = chosenOrigIdx;
-        if (!isCorrect) {
-          if (!state.wrongIds[q.id]) {
-            state.wrongHistoryEverCount = (state.wrongHistoryEverCount || 0) + 1;
-          }
-          state.wrongIds[q.id] = (state.wrongIds[q.id] || 0) + 1;
-        }
+        state.wrongIds[q.id] = (state.wrongIds[q.id] || 0) + 1;
       }
 
       saveState();
       renderPracticeView();
 
-      const canAdvance = (state.mode === "wrong" && state.autoClearWrong)
-        ? (Object.keys(state.wrongIds).length >= 0)
-        : (state.currentIndex < filteredList.length - 1);
-
+      const canAdvance = (state.currentIndex < filteredList.length - 1);
       if (isCorrect && state.autoNextDelay > 0 && canAdvance) {
         const banner = document.getElementById("auto-next-banner");
         banner.classList.remove("hidden");
         autoNextTimer = setTimeout(function() {
           banner.classList.add("hidden");
-          if (state.mode === "wrong" && state.autoClearWrong) {
-            recomputeFilteredList();
-            renderPracticeView();
-          } else {
-            nextQuestion();
-          }
+          nextQuestion();
         }, state.autoNextDelay);
       }
     }
@@ -2768,31 +2856,44 @@
       cancelAutoNext();
       if (filteredList.length === 0) return;
 
-      // TH1: Ở tab câu sai và câu vừa làm bị sai -> đảo câu vào phía sau để làm lại
-      if (state.mode === "wrong" && state.wrongNeedsRequeue) {
-        commitWrongRequeue();
-        if (state.currentIndex >= filteredList.length) {
-          state.currentIndex = 0;
+      if (state.mode === "wrong") {
+        const curQ = filteredList[state.currentIndex];
+        // Nếu câu hiện tại đã làm (đã chọn sai) và bấm Câu tiếp theo:
+        // Câu hiện tại làm sai được xóa đi (vì bản sao đã được đưa ra nửa cuối) và chuyển câu tiếp
+        if (curQ && curQ.chosen !== undefined) {
+          state.wrongQueue.splice(state.currentIndex, 1);
+          recomputeFilteredList();
+          if (state.currentIndex >= filteredList.length) {
+            state.currentIndex = Math.max(0, filteredList.length - 1);
+          }
+          renderPracticeView();
+          updateStatsUI();
+          saveState();
+          return;
         }
-        renderPracticeView();
-        showToast("Đã đảo câu làm sai vào danh sách để làm lại sau!");
+
+        // Nếu câu hiện tại chưa làm mà bấm tiếp theo:
+        if (state.currentIndex < filteredList.length - 1) {
+          state.currentIndex++;
+          renderPracticeView();
+        } else {
+          let foundUnanswered = false;
+          for (let i = 0; i < filteredList.length; i++) {
+            if (filteredList[i].chosen === undefined) {
+              state.currentIndex = i;
+              renderPracticeView();
+              foundUnanswered = true;
+              break;
+            }
+          }
+          if (!foundUnanswered) {
+            showToast("Bạn đang ở câu cuối cùng của danh sách câu sai!");
+          }
+        }
         return;
       }
 
-      // TH2: Ở tab câu sai khi làm đúng và tự động xóa khỏi danh sách sai
-      if (state.mode === "wrong" && state.autoClearWrong) {
-        const curQ = filteredList[state.currentIndex];
-        if (curQ && !state.wrongIds[curQ.id]) {
-          recomputeFilteredList();
-          if (state.currentIndex >= filteredList.length) {
-            state.currentIndex = 0;
-          }
-          renderPracticeView();
-          return;
-        }
-      }
-
-      // TH3: Ở tab ôn tập có bật bỏ qua câu đã làm đúng
+      // Ở tab ôn tập có bật bỏ qua câu đã làm đúng
       if (state.mode === "practice" && state.skipCorrectOnNext) {
         for (let step = 1; step <= filteredList.length; step++) {
           const candidateIdx = (state.currentIndex + step) % filteredList.length;
@@ -2805,22 +2906,11 @@
         }
       }
 
-      // TH4: Chuyển câu bình thường
+      // Chuyển câu bình thường
       if (state.currentIndex < filteredList.length - 1) {
         state.currentIndex++;
         renderPracticeView();
       } else {
-        // Nếu ở tab câu sai đến cuối danh sách mà vẫn còn câu chưa hoàn thành -> vòng lại câu chưa làm
-        if (state.mode === "wrong") {
-          for (let i = 0; i < filteredList.length; i++) {
-            if (state.wrongTabAnswered[filteredList[i].id] === undefined) {
-              state.currentIndex = i;
-              renderPracticeView();
-              showToast("Chuyển đến câu cần làm lại!");
-              return;
-            }
-          }
-        }
         showToast("Bạn đang ở câu cuối cùng của danh sách!");
       }
     }
@@ -2922,9 +3012,6 @@
 
     function jumpToQuestion(idx) {
       cancelAutoNext();
-      if (state.mode === "wrong" && state.wrongNeedsRequeue && idx !== state.currentIndex) {
-        commitWrongRequeue();
-      }
       if (idx >= 0 && idx < filteredList.length) {
         state.currentIndex = idx;
         renderPracticeView();
@@ -2937,11 +3024,12 @@
       if (filteredList.length === 0) return;
       const q = filteredList[state.currentIndex];
       if (state.mode === "wrong") {
-        state.wrongNeedsRequeue = null;
-        delete state.wrongTabAnswered[q.id];
-        state.wrongOptionPerms[q.id] = generateOptionPermForQuestion(q);
+        q.chosen = undefined;
+        q.perm = generateOptionPermForQuestion(q);
       } else {
         delete state.answered[q.id];
+        delete state.wrongIds[q.id];
+        delete state.wrongTabAnswered[q.id];
         if (isQuestionCurrentlyShuffled(q)) {
           state.shuffledOptionPerms[q.id] = generateOptionPermForQuestion(q);
         }
@@ -2970,27 +3058,27 @@
       const count = filteredList.length;
       const title = state.mode === "wrong"
         ? "Làm lại các câu sai đang hiển thị?"
-        : "Làm lại " + count + " câu trong bộ lọc này?";
+        : "Làm lại " + count + " câu trong danh sách này?";
       const desc = state.mode === "wrong"
-        ? "Hệ thống sẽ xóa lựa chọn vừa làm của " + count + " câu trong tab Câu sai và xáo trộn lại thứ tự mới (không xóa câu khỏi danh sách Câu sai)."
-        : "Hệ thống sẽ xóa trạng thái đã chọn của " + count + " câu hỏi trong danh sách đang lọc ở tab Ôn tập để bạn làm lại từ đầu (danh sách Câu sai vẫn được giữ nguyên).";
+        ? "Hệ thống sẽ xóa kết quả vừa làm của " + count + " câu trong tab Câu sai để bạn làm lại từ đầu."
+        : "Hệ thống sẽ xóa toàn bộ kết quả đã chọn và xóa luôn các câu làm sai trong danh sách đang mở khỏi mục 'Câu sai' để bạn làm lại tất cả từ đầu như mới.";
 
       openCustomModal(title, desc, function() {
         if (state.mode === "wrong") {
-          for (let i = 0; i < filteredList.length; i++) {
-            delete state.wrongTabAnswered[filteredList[i].id];
-          }
-          buildWrongTabShuffle();
+          initWrongQueue();
         } else {
           for (let i = 0; i < filteredList.length; i++) {
-            delete state.answered[filteredList[i].id];
+            const qid = filteredList[i].id;
+            delete state.answered[qid];
+            delete state.wrongIds[qid];
+            delete state.wrongTabAnswered[qid];
           }
         }
         state.currentIndex = 0;
         saveState();
         recomputeFilteredList();
         renderPracticeView();
-        showToast("Đã đặt lại " + count + " câu hỏi!");
+        showToast("Đã xóa câu sai và đặt lại " + count + " câu để làm lại từ đầu!");
       });
     }
 
