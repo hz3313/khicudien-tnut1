@@ -924,9 +924,9 @@
                 <span>Làm lại bộ này</span>
               </button>
 
-              <button type="button" onclick="toggleOptionShuffle()" title="Bật / tắt chế độ đảo vị trí đáp án A/B/C/D" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-colors">
+              <button id="btn-palette-shuffle" type="button" onclick="reshuffleCurrentMode()" title="Đảo ngẫu nhiên tất cả câu hỏi và đáp án trong danh sách" class="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1 transition-colors">
                 <svg class="w-3 h-3 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
-                <span>Đảo đáp án</span>
+                <span>Đảo</span>
               </button>
             </div>
           </div>
@@ -1510,40 +1510,31 @@ let state = {
     }
 
     function toggleOrTriggerShuffle() {
-      if (state.mode === "wrong") {
-        reshuffleCurrentMode();
-        return;
-      }
-      if (!state.shuffleEnabled) {
-        state.shuffleEnabled = true;
-        buildPracticeShuffleForCurrentScope();
-        state.currentIndex = 0;
-        saveState();
-        recomputeFilteredList();
-        renderPracticeView();
-        showToast("Đã bật Đảo câu hỏi & Đáp án!");
-      } else {
-        reshuffleCurrentMode();
-      }
+      reshuffleCurrentMode();
     }
 
     function reshuffleCurrentMode() {
       cancelAutoNext();
       if (state.mode === "wrong") {
+        initWrongQueue();
         buildWrongTabShuffle();
         state.currentIndex = 0;
         saveState();
         recomputeFilteredList();
         renderPracticeView();
-        showToast("Đã tạo thứ tự đảo mới cho danh sách Câu sai!");
+        showToast("Đã đảo danh sách câu sai và đáp án!");
       } else {
         state.shuffleEnabled = true;
         buildPracticeShuffleForCurrentScope();
+        for (let i = 0; i < QUESTIONS.length; i++) {
+          const q = QUESTIONS[i];
+          state.shuffledOptionPerms[q.id] = generateOptionPermForQuestion(q);
+        }
         state.currentIndex = 0;
         saveState();
         recomputeFilteredList();
         renderPracticeView();
-        showToast("Đã đảo lại thứ tự câu hỏi và đáp án mới!");
+        showToast("Đã đảo tất cả câu hỏi và đáp án!");
       }
     }
 
@@ -1556,6 +1547,25 @@ let state = {
       recomputeFilteredList();
       renderPracticeView();
       showToast("Đã tắt đảo, quay về thứ tự câu hỏi & đáp án gốc!");
+    }
+
+    function generateDifferentOptionPerm(q, oldPerm) {
+      const oldStr = Array.isArray(oldPerm) ? oldPerm.join(",") : "";
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const p = generateOptionPermForQuestion(q);
+        if (p.join(",") !== oldStr) return p;
+      }
+      const fallback = generateOptionPermForQuestion(q);
+      if (fallback.join(",") === oldStr && fallback.length >= 2) {
+        const tmp = fallback[0];
+        fallback[0] = fallback[1];
+        fallback[1] = tmp;
+      }
+      return fallback;
+    }
+
+    function toggleOptionShuffle() {
+      reshuffleCurrentMode();
     }
 
     function handleShuffleScopeChange() {
@@ -3045,28 +3055,36 @@ let state = {
 
         let btnCls = "border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/50 hover:border-blue-400 hover:bg-blue-50/40 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-100";
         let badgeCls = "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600";
-        let rightTag = "";
+        let outsideTag = '<div class="w-6 sm:w-7 shrink-0"></div>';
 
         if (chosenOrig !== undefined) {
           if (isCorrectAns) {
             btnCls = "border-emerald-500 bg-emerald-50/90 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-100 ring-1 ring-emerald-500";
             badgeCls = "bg-emerald-600 text-white border-emerald-600";
-            rightTag = '<span class="ml-auto text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0">✓ Đáp án đúng</span>';
+            // Dấu tích xanh hiển thị ở lề ngoài bên cạnh ô đáp án đúng theo yêu cầu người dùng
+            outsideTag = '<div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs" title="Đáp án đúng">' +
+              '<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+            '</div>';
           } else if (isChosen && !isCorrectAns) {
             btnCls = "border-rose-500 bg-rose-50/90 dark:bg-rose-950/50 text-rose-950 dark:text-rose-100 ring-1 ring-rose-500";
             badgeCls = "bg-rose-600 text-white border-rose-600";
-            rightTag = '<span class="ml-auto text-xs font-bold text-rose-600 dark:text-rose-400 shrink-0">✗ Bạn chọn sai</span>';
+            // Dấu x đỏ hiển thị ở lề ngoài bên cạnh đáp án đã chọn sai
+            outsideTag = '<div class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-xs" title="Bạn chọn sai">' +
+              '<svg class="w-3.5 h-3.5 sm:w-4 sm:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+            '</div>';
           } else {
             btnCls = "border-slate-200 dark:border-slate-700/60 bg-slate-50/40 dark:bg-slate-900/30 opacity-75 text-slate-600 dark:text-slate-400";
           }
         }
 
         optHtml.push(
-          '<button type="button" onclick="selectPracticeAnswer(' + pos + ')" class="w-full text-left p-3.5 sm:p-4 rounded-xl border transition-all flex items-center gap-3.5 ' + btnCls + '">' +
-            '<span class="w-8 h-8 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center shrink-0 shadow-sm ' + badgeCls + '">' + letters[pos] + '</span>' +
-            '<span class="opt-math-wrap flex-1">' + renderHtmlWithImages(q.options[origIdx], true) + '</span>' +
-            rightTag +
-          '</button>'
+          '<div class="flex items-center gap-2 sm:gap-2.5 w-full">' +
+            '<button type="button" onclick="selectPracticeAnswer(' + pos + ')" class="flex-1 text-left p-3.5 sm:p-4 rounded-xl border transition-all flex items-center gap-3.5 ' + btnCls + '">' +
+              '<span class="w-8 h-8 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center shrink-0 shadow-sm ' + badgeCls + '">' + letters[pos] + '</span>' +
+              '<span class="opt-math-wrap flex-1">' + renderHtmlWithImages(q.options[origIdx], true) + '</span>' +
+            '</button>' +
+            outsideTag +
+          '</div>'
         );
       }
       document.getElementById("q-options-list").innerHTML = optHtml.join("");
