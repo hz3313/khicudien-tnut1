@@ -315,6 +315,69 @@
       }
     }
 
+    /* Khối Tiến trình ôn tập nhỏ gọn trên thanh tiêu đề (Header) theo đúng ô đỏ */
+    #header-progress-box {
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      min-width: 210px !important;
+      max-width: 340px !important;
+      user-select: none !important;
+      flex-shrink: 0 !important;
+      padding: 2px 0 !important;
+    }
+
+    #header-progress-label {
+      font-size: 11.5px !important;
+      font-weight: 700 !important;
+      color: #2563eb !important; /* Blue-600 */
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      line-height: 1.2 !important;
+    }
+    .dark #header-progress-label {
+      color: #60a5fa !important; /* Blue-400 */
+    }
+
+    #header-progress-val {
+      font-size: 11.5px !important;
+      font-weight: 700 !important;
+      color: #334155 !important; /* Slate-700 */
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+      line-height: 1.2 !important;
+    }
+    .dark #header-progress-val {
+      color: #cbd5e1 !important; /* Slate-300 */
+    }
+
+    /* Thanh tiến trình đạt (Track + Bar): Luôn hiển thị rõ ràng cả khi zoom to/nhỏ */
+    #header-progress-track {
+      width: 100% !important;
+      height: 7px !important;
+      min-height: 7px !important;
+      max-height: 7px !important;
+      background-color: #cbd5e1 !important; /* Slate-300 sáng rõ */
+      border-radius: 9999px !important;
+      overflow: hidden !important;
+      position: relative !important;
+      margin-top: 4px !important;
+      display: block !important;
+    }
+    .dark #header-progress-track {
+      background-color: #334155 !important; /* Slate-700 trong Dark mode */
+    }
+
+    #header-bar-correct {
+      height: 7px !important;
+      min-height: 7px !important;
+      max-height: 7px !important;
+      background-color: #10b981 !important; /* Emerald-500 xanh lá sắc nét */
+      border-radius: 9999px !important;
+      display: block !important;
+      transition: width 0.3s ease !important;
+    }
+
   </style>
   <!-- KaTeX Math Rendering Engine (Standard MathType Typography) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -612,53 +675,62 @@
 
   <!-- TOP NAVIGATION BAR -->
   <header class="sticky top-0 z-30 border-b border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm">
-    <div class="w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center justify-between gap-2">
-      <!-- Hamburger Menu Toggle Button (Gemini style) -->
-      <button id="btn-toggle-sidebar" type="button" onclick="toggleSidebar()" 
-              title="Mở thanh bên cài đặt & bộ lọc (Phím tắt: M hoặc Esc)" 
-              aria-label="Mở bảng điều khiển và bộ lọc" 
-              class="p-2 -ml-1 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-colors flex items-center justify-center shrink-0">
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="3" y1="6" x2="21" y2="6"></line>
-          <line x1="3" y1="18" x2="21" y2="18"></line>
-        </svg>
-      </button>
+    <div class="w-full px-3 sm:px-5 lg:px-6 h-14 flex items-center justify-between gap-3 lg:gap-6">
+      <!-- Cột trái: Đồng bộ kích thước và vị trí theo khung bài làm chính -->
+      <div class="flex-1 min-w-0 flex items-center justify-between relative h-full gap-2">
+        <!-- Logo & Tiến độ ôn tập nhỏ gọn (Sát lề trái theo đúng vị trí ô đỏ) -->
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0 z-10">
+          <button id="btn-toggle-sidebar" type="button" onclick="toggleSidebar()" 
+                  title="Mở thanh bên cài đặt & bộ lọc (Phím tắt: M hoặc Esc)" 
+                  aria-label="Mở bảng điều khiển và bộ lọc" 
+                  class="p-2 -ml-1 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-colors flex items-center justify-center shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
 
-      <!-- Brand -->
-      <div class="flex items-center gap-2.5 min-w-0">
-        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm" title="Ôn tập trắc nghiệm">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <!-- Logo ứng dụng (Chỉ giữ biểu tượng logo, đã bỏ toàn bộ chữ) -->
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm" title="Ôn tập trắc nghiệm">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+
+          <!-- Khối Tiến trình ôn tập nhỏ gọn (Vị trí ô đỏ trên ảnh 1) -->
+          <div id="header-progress-box" title="Tiến trình ôn tập: Số câu làm đúng trên tổng số câu ngân hàng">
+            <div class="flex items-center justify-between gap-2 leading-tight mb-1">
+              <span id="header-progress-label">Tiến trình ôn tập</span>
+              <span id="header-progress-val">0% hoàn thành (0/224)</span>
+            </div>
+            <!-- Thanh tiến trình đạt (Đã gắn ID để CSS thiết lập chiều cao 7px và màu xanh rõ nét) -->
+            <div id="header-progress-track">
+              <div id="header-bar-correct" style="width: 0%"></div>
+            </div>
+          </div>
         </div>
-        <div class="truncate">
-          <h1 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate leading-tight">
-            Ôn tập trắc nghiệm
-          </h1>
-          <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate hidden sm:block">
-            Hệ thống ngân hàng câu hỏi & Luyện thi trắc nghiệm trực tuyến
-          </p>
+
+        <!-- Thanh Menu chế độ học (Căn chuẩn vị trí khoảng giữa với bài làm) -->
+        <div class="flex-1 lg:flex-initial lg:absolute lg:inset-0 flex items-center justify-center pointer-events-none z-0">
+          <nav class="pointer-events-auto flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0" aria-label="Chế độ học">
+            <button id="tab-practice" type="button" onclick="switchMode('practice')" title="Chế độ Ôn tập toàn ngân hàng" aria-label="Chế độ Ôn tập" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm flex items-center gap-1.5">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              <span>Ôn tập</span>
+            </button>
+            <button id="tab-wrong" type="button" onclick="switchMode('wrong')" title="Luyện lại các câu đã làm sai (Mặc định đảo câu & đáp án)" aria-label="Danh sách Câu sai" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center gap-1.5">
+              <svg class="w-4 h-4 shrink-0 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Câu sai</span>
+              <span id="badge-wrong-count" class="px-1.5 py-0.5 text-[11px] rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 font-bold">0</span>
+            </button>
+            <button id="tab-exam" type="button" onclick="switchMode('exam')" title="Thi thử trắc nghiệm" aria-label="Thi thử" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center gap-1.5">
+              <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>Thi thử</span>
+            </button>
+          </nav>
         </div>
       </div>
 
-      <!-- Main Mode Tabs -->
-      <nav class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0" aria-label="Chế độ học">
-        <button id="tab-practice" type="button" onclick="switchMode('practice')" title="Chế độ Ôn tập toàn ngân hàng" aria-label="Chế độ Ôn tập" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm flex items-center gap-1.5">
-          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-          <span>Ôn tập</span>
-        </button>
-        <button id="tab-wrong" type="button" onclick="switchMode('wrong')" title="Luyện lại các câu đã làm sai (Mặc định đảo câu & đáp án)" aria-label="Danh sách Câu sai" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center gap-1.5">
-          <svg class="w-4 h-4 shrink-0 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>Câu sai</span>
-          <span id="badge-wrong-count" class="px-1.5 py-0.5 text-[11px] rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-300 font-bold">0</span>
-        </button>
-        <button id="tab-exam" type="button" onclick="switchMode('exam')" title="Thi thử trắc nghiệm" aria-label="Thi thử" class="px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center gap-1.5">
-          <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Thi thử</span>
-        </button>
-      </nav>
-
-      <!-- Quick Utility Controls -->
-      <div class="flex items-center gap-1.5 shrink-0">
+      <!-- Cột phải: Căn chỉnh thẳng hàng theo cột danh sách câu hỏi bên phải (272px trên desktop) -->
+      <div class="lg:w-[272px] shrink-0 flex items-center justify-end gap-1.5 z-10">
         <button id="btn-dark-mode" type="button" onclick="toggleDarkMode()" title="Đổi giao diện Sáng / Tối" aria-label="Đổi giao diện Sáng hoặc Tối" class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-center">
           <span id="dark-mode-icon" class="flex items-center justify-center"></span>
         </button>
@@ -706,13 +778,13 @@
               <span id="q-index-badge" class="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">
                 Câu 1 / 578
               </span>
-              <span id="q-code-badge" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+              <span id="q-code-badge" class="hidden px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold">
                 Mã câu: 1.1
               </span>
-              <span id="q-level-badge" class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-xs font-semibold">
+              <span id="q-level-badge" class="hidden px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-xs font-semibold">
                 Cấp độ 1: Nhận biết
               </span>
-              <span id="q-point-badge" class="px-2 py-1 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-xs font-medium">
+              <span id="q-point-badge" class="hidden px-2 py-1 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 text-xs font-medium">
                 <span id="q-point-val">--</span> điểm
               </span>
               <span id="q-shuffled-pill" class="hidden px-2 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-[11px] font-semibold">
@@ -2664,6 +2736,16 @@ let state = {
 
         document.getElementById("bar-correct").style.width = (totalEver > 0 ? ((resolved / totalEver) * 100).toFixed(1) : "0") + "%";
         document.getElementById("bar-wrong").style.width = (totalEver > 0 ? ((wrongQueueCount / totalEver) * 100).toFixed(1) : "0") + "%";
+
+        // Cập nhật khối tiến độ nhỏ gọn trên Header khi ở tab Câu sai
+        const headerLabel = document.getElementById("header-progress-label");
+        const headerVal = document.getElementById("header-progress-val");
+        const headerBar = document.getElementById("header-bar-correct");
+        if (headerLabel && headerVal && headerBar) {
+          headerLabel.textContent = "Khắc phục câu sai";
+          headerVal.textContent = pctFixed + "% hoàn thành (" + resolved + "/" + totalEver + ")";
+          headerBar.style.width = (totalEver > 0 ? ((resolved / totalEver) * 100).toFixed(1) : "0") + "%";
+        }
       } else {
         document.getElementById("sidebar-mode-title").textContent = "Tiến độ ôn tập toàn ngân hàng";
         statusWrap.classList.remove("hidden");
@@ -2701,6 +2783,17 @@ let state = {
 
         document.getElementById("bar-correct").style.width = ((correctCount / total) * 100).toFixed(1) + "%";
         document.getElementById("bar-wrong").style.width = ((wrongPracticeCount / total) * 100).toFixed(1) + "%";
+
+        // Cập nhật khối tiến trình nhỏ gọn trên Header (tiến trình ôn tập, phần trăm hoàn thành, số câu đạt trên tổng và thanh tiến trình đạt)
+        const headerLabel = document.getElementById("header-progress-label");
+        const headerVal = document.getElementById("header-progress-val");
+        const headerBar = document.getElementById("header-bar-correct");
+        if (headerLabel && headerVal && headerBar) {
+          headerLabel.textContent = "Tiến trình ôn tập";
+          const pctAchieved = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+          headerVal.textContent = pctAchieved + "% hoàn thành (" + correctCount + "/" + total + ")";
+          headerBar.style.width = (total > 0 ? ((correctCount / total) * 100).toFixed(1) : "0") + "%";
+        }
       }
     }
 
@@ -2911,25 +3004,16 @@ let state = {
       const pointBadge = document.getElementById("q-point-badge");
       const shufPill = document.getElementById("q-shuffled-pill");
 
+      // Cả tab Ôn tập và tab Câu sai đều ẩn: Mã câu, Cấp độ, Điểm (theo yêu cầu người dùng)
+      if (codeBadge) codeBadge.classList.add("hidden");
+      if (lvlBadge) lvlBadge.classList.add("hidden");
+      if (pointBadge) pointBadge.classList.add("hidden");
+
       if (isWrongMode) {
-        // Tại tab Câu sai: lược bỏ các thông tin không cần thiết (Mã câu, Cấp độ, Điểm, Đã đảo)
-        if (codeBadge) codeBadge.classList.add("hidden");
-        if (lvlBadge) lvlBadge.classList.add("hidden");
-        if (pointBadge) pointBadge.classList.add("hidden");
+        // Tại tab Câu sai: ẩn cả huy hiệu đã đảo
         if (shufPill) shufPill.classList.add("hidden");
       } else {
-        if (codeBadge) {
-          codeBadge.textContent = "Mã câu: " + q.code;
-          codeBadge.classList.remove("hidden");
-        }
-        if (lvlBadge) {
-          lvlBadge.textContent = lvlObj.name;
-          lvlBadge.className = "px-2.5 py-1 rounded-lg text-xs font-semibold " + lvlObj.cls;
-          lvlBadge.classList.remove("hidden");
-        }
-        if (pointBadge) {
-          pointBadge.classList.remove("hidden");
-        }
+        // Tại tab Ôn tập: chỉ hiện huy hiệu Đã đảo nếu đang bật chế độ đảo
         if (shufPill) {
           if (isShuf) shufPill.classList.remove("hidden");
           else shufPill.classList.add("hidden");
