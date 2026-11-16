@@ -2904,14 +2904,37 @@ let state = {
       const lvlObj = LEVEL_INFO[q.lvl] || LEVEL_INFO[2];
 
       document.getElementById("q-index-badge").textContent = "Câu " + (state.currentIndex + 1) + " / " + filteredList.length;
-      document.getElementById("q-code-badge").textContent = "Mã câu: " + q.code;
-      const lvlBadge = document.getElementById("q-level-badge");
-      lvlBadge.textContent = lvlObj.name;
-      lvlBadge.className = "px-2.5 py-1 rounded-lg text-xs font-semibold " + lvlObj.cls;
 
+      const isWrongMode = (state.mode === "wrong");
+      const codeBadge = document.getElementById("q-code-badge");
+      const lvlBadge = document.getElementById("q-level-badge");
+      const pointBadge = document.getElementById("q-point-badge");
       const shufPill = document.getElementById("q-shuffled-pill");
-      if (isShuf) shufPill.classList.remove("hidden");
-      else shufPill.classList.add("hidden");
+
+      if (isWrongMode) {
+        // Tại tab Câu sai: lược bỏ các thông tin không cần thiết (Mã câu, Cấp độ, Điểm, Đã đảo)
+        if (codeBadge) codeBadge.classList.add("hidden");
+        if (lvlBadge) lvlBadge.classList.add("hidden");
+        if (pointBadge) pointBadge.classList.add("hidden");
+        if (shufPill) shufPill.classList.add("hidden");
+      } else {
+        if (codeBadge) {
+          codeBadge.textContent = "Mã câu: " + q.code;
+          codeBadge.classList.remove("hidden");
+        }
+        if (lvlBadge) {
+          lvlBadge.textContent = lvlObj.name;
+          lvlBadge.className = "px-2.5 py-1 rounded-lg text-xs font-semibold " + lvlObj.cls;
+          lvlBadge.classList.remove("hidden");
+        }
+        if (pointBadge) {
+          pointBadge.classList.remove("hidden");
+        }
+        if (shufPill) {
+          if (isShuf) shufPill.classList.remove("hidden");
+          else shufPill.classList.add("hidden");
+        }
+      }
 
       const starBtn = document.getElementById("btn-bookmark");
       if (state.bookmarks[q.id]) {
